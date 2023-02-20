@@ -4,9 +4,8 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
 
-#define N_Class 5
+#define N_Class 10
 
 typedef struct s_color
 {
@@ -28,12 +27,19 @@ typedef std::map<Polyhedron::Facet_const_handle, double> Facet_double_map;
 typedef std::map<Polyhedron::Facet_const_handle, int> Facet_int_map;
 
 // Define the color palette
-color colorPalette[N_Class] = { { 1.0, 0.0, 0.0 }, // red
-                               { 1.0, 0.5, 0.0 }, // orange
-                               { 1.0, 1.0, 0.0 }, // yellow
-                               { 0.0, 1.0, 0.0 }, // green
-                               { 0.0, 0.0, 1.0 }  // blue
-                             };
+color colorPalette[N_Class] = {
+    {1.0, 0.0, 0.0},   // red
+    {1.0, 0.5, 0.0},   // orange
+    {1.0, 1.0, 0.0},   // yellow
+    {0.0, 1.0, 0.0},   // green
+    {0.0, 0.5, 1.0},   // blue-green
+    {0.0, 0.0, 1.0},   // blue
+    {0.5, 0.0, 1.0},   // purple
+    {1.0, 0.0, 1.0},   // magenta
+    {0.5, 0.5, 0.5},   // gray
+    {0.0, 0.0, 0.0}    // black
+};
+
 
 /// @brief map all the values from [min, max] to [0, 1]
 /// @param facetMap non-const reference to the map (it is an in/out parameter)
