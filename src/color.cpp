@@ -5,7 +5,8 @@
 #include <iostream>
 #include <fstream>
 
-#define N_Class 10
+#define N_Class 4
+#define Nb_Color 10
 
 typedef struct s_color
 {
@@ -27,7 +28,7 @@ typedef std::map<Polyhedron::Facet_const_handle, double> Facet_double_map;
 typedef std::map<Polyhedron::Facet_const_handle, int> Facet_int_map;
 
 // Define the color palette
-color colorPalette[N_Class] = {
+color colorPalette[Nb_Color] = {
     {1.0, 0.0, 0.0},   // red
     {1.0, 0.5, 0.0},   // orange
     {1.0, 1.0, 0.0},   // yellow
@@ -73,7 +74,7 @@ Facet_int_map simpleThershold(Facet_double_map &facetMap)
 	double avgValue = 0;
 	int nb = 0, em = 0;
 	Facet_iterator i = 0;
-	Facet_int_map PerimInt;
+	Facet_int_map ClassInt;
 
 	// Initialize the min and max perimeters
 	double maxValue = facetMap.begin()->second;
@@ -90,7 +91,6 @@ Facet_int_map simpleThershold(Facet_double_map &facetMap)
 			minValue = elem.second;
 		}
 	}
-	double perimeterThreshold = (minValue + maxValue) / 2.0;
 	float intervalSize = (maxValue - minValue) / N_Class;
 
 
@@ -105,9 +105,9 @@ Facet_int_map simpleThershold(Facet_double_map &facetMap)
 			intervalIndex = N_Class - 1;
 		}
 
-		PerimInt[elem.first] = intervalIndex;
+		ClassInt[elem.first] = intervalIndex;
 	}
-	return PerimInt;
+	return ClassInt;
 }
 
 /// @brief Generate in a .off file a colored mesh according to a value map (green to red shades)
@@ -207,6 +207,17 @@ Facet_double_map computeAreaMap(const Polyhedron &mesh)
 	return out;
 }
 
+Facet_int_map segmentationParCC(Polyhedron & mesh, Facet_int_map & segmentation)
+{
+	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
+	{
+		Halfedge_facet_circulator j = i->facet_begin();
+
+		j->vertex()
+	}
+ 
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 2)
@@ -229,9 +240,7 @@ int main(int argc, char *argv[])
 
 	normalizeMap(mapPerim);
 
-	std::cout << "test1" << std::endl;
 	auto PerimInt = simpleThershold(mapPerim);
-	std::cout << "test2" << std::endl;
 
 	writeOFFfromValueMap(mesh, mapPerim, PerimInt, argc >= 3 ? argv[2] : "result.off");
 
