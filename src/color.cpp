@@ -6,7 +6,7 @@
 #include <fstream>
 #include <time.h>
 
-#define N_Class 4
+#define N_Class 6
 
 typedef struct s_color
 {
@@ -246,10 +246,10 @@ void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, 
 	segOut[facet] = Nclass;
 
 	// Traverse neighboring facets
-	for (int i = 0; i < 3; ++i)
-	{
+	Halfedge_facet_circulator he = facet->facet_begin();
 
-		Halfedge_facet_circulator he = facet->facet_begin();
+	do{
+
 		Facet_iterator neighbor_facet = he->opposite()->facet();
 
 		// Check if neighbor_facet is in the same segmentation class and has not been visited yet
@@ -258,9 +258,7 @@ void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, 
 			visit_facet(mesh, neighbor_facet, visit, segOut, segmentation, Nclass); // Recursively visit the neighboring facet
 		}
 
-		// Move to the next halfedge
-		he++;
-	}
+	}while(++he !=  facet->facet_begin());
 }
 /**
  * @brief Permet de faire un changemetn de class en fonction des face adajcente
@@ -277,10 +275,14 @@ Facet_int_map segmentationParCC(Polyhedron &mesh, Facet_int_map &segmentation)
 
 	int nClass = 0;
 
+	std::ofstream file;
+	file.open("test.txt");
+	file << "situation init" << std::endl;
 	//  tableau de visit
 	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
 	{
 		visit[f] = false;
+		file << " prem seg : " << segmentation[f] << " , CC seg : " << NewSeg[f] <<std::endl;
 	}
 
 	// parcour du mesh
@@ -288,12 +290,18 @@ Facet_int_map segmentationParCC(Polyhedron &mesh, Facet_int_map &segmentation)
 	{
 		if (!visit[f])
 		{
-			nClass++;
 			visit_facet(mesh, f, visit, NewSeg, segmentation, nClass);
+			nClass++;
 		}
 	}
 
 	Nb_Color = nClass;
+	file << "situation apres" << std::endl;
+	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
+	{
+		file << " prem seg : " << segmentation[f] << " , CC seg : " << NewSeg[f] <<std::endl;
+	}
+
 	return NewSeg;
 }
 
