@@ -8,6 +8,7 @@
 #define N_Class 4
 #define Nb_Color 10
 
+
 typedef struct s_color
 {
 	float R;
@@ -26,6 +27,7 @@ typedef Polyhedron::Facet_handle Facet_handle;
 
 typedef std::map<Polyhedron::Facet_const_handle, double> Facet_double_map;
 typedef std::map<Polyhedron::Facet_const_handle, int> Facet_int_map;
+typedef std::map<Polyhedron::Facet_const_handle, bool> Facet_bool_map;
 
 // Define the color palette
 color colorPalette[Nb_Color] = {
@@ -69,6 +71,12 @@ void normalizeMap(Facet_double_map &facetMap)
 	}
 }
 
+/**
+ * @brief Permet de calculer un tableau de avec la classe de chaque face
+ * 
+ * @param facetMap 
+ * @return Facet_int_map 
+ */
 Facet_int_map simpleThershold(Facet_double_map &facetMap)
 {
 	double avgValue = 0;
@@ -158,6 +166,12 @@ void writeOFFfromValueMap(const Polyhedron &mesh, const Facet_double_map &facetM
 	std::cout << "Le résultat a été exporté dans " << filePath << " !" << std::endl;
 }
 
+/**
+ * @brief Cree un tableau avec les perimaitre de chaque face
+ * 
+ * @param mesh 
+ * @return Facet_double_map 
+ */
 Facet_double_map computePerimMap(const Polyhedron &mesh)
 {
 	Facet_double_map out;
@@ -178,10 +192,16 @@ Facet_double_map computePerimMap(const Polyhedron &mesh)
 
 	return out;
 }
-
+/**
+ * @brief Cree un tableau avec les aires de chaque faces
+ * 
+ * @param mesh 
+ * @return Facet_double_map 
+ */
 Facet_double_map computeAreaMap(const Polyhedron &mesh)
 {
 	Facet_double_map out;
+	Facet_bool_map visit;
 
 	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
 	{
@@ -207,15 +227,27 @@ Facet_double_map computeAreaMap(const Polyhedron &mesh)
 	return out;
 }
 
-Facet_int_map segmentationParCC(Polyhedron & mesh, Facet_int_map & segmentation)
+/**
+ * @brief Permet de faire un changemetn de class en fonction des face adajcente
+ * 
+ * @param mesh 
+ * @param segmentation 
+ * @return Facet_int_map 
+ * 
+ */
+Facet_int_map segmentationParCC(Polyhedron & mesh, Facet_int_map & segmentation, Facet )
 {
+	Facet_int_map NewSeg;
+	
 	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
 	{
 		Halfedge_facet_circulator j = i->facet_begin();
 
-		j->vertex()
+		std::cout << segmentation.at(i) << std::endl;
+
 	}
- 
+
+	return NewSeg;
 }
 
 int main(int argc, char *argv[])
@@ -241,6 +273,7 @@ int main(int argc, char *argv[])
 	normalizeMap(mapPerim);
 
 	auto PerimInt = simpleThershold(mapPerim);
+	auto Em = segmentationParCC(mesh,PerimInt);	
 
 	writeOFFfromValueMap(mesh, mapPerim, PerimInt, argc >= 3 ? argv[2] : "result.off");
 
