@@ -4,10 +4,9 @@
 
 #include <iostream>
 #include <fstream>
+#include <time.h>
 
 #define N_Class 4
-#define Nb_Color 10
-
 
 typedef struct s_color
 {
@@ -30,19 +29,19 @@ typedef std::map<Polyhedron::Facet_const_handle, int> Facet_int_map;
 typedef std::map<Polyhedron::Facet_const_handle, bool> Facet_bool_map;
 
 // Define the color palette
-color colorPalette[Nb_Color] = {
-    {1.0, 0.0, 0.0},   // red
-    {1.0, 0.5, 0.0},   // orange
-    {1.0, 1.0, 0.0},   // yellow
-    {0.0, 1.0, 0.0},   // green
-    {0.0, 0.5, 1.0},   // blue-green
-    {0.0, 0.0, 1.0},   // blue
-    {0.5, 0.0, 1.0},   // purple
-    {1.0, 0.0, 1.0},   // magenta
-    {0.5, 0.5, 0.5},   // gray
-    {0.0, 0.0, 0.0}    // black
-};
+int Nb_Color = N_Class;
 
+void initColor(color *colorPalette)
+{
+
+	for (int i = 0; i < Nb_Color; i++)
+	{
+
+		colorPalette[i].R = (rand() * i % 1000) / 1000.;
+		colorPalette[i].V = (rand() * (50 - i) % 1000) / 1000.;
+		colorPalette[i].B = (rand() * (100 - i) % 1000) / 1000.;
+	}
+}
 
 /// @brief map all the values from [min, max] to [0, 1]
 /// @param facetMap non-const reference to the map (it is an in/out parameter)
@@ -73,9 +72,9 @@ void normalizeMap(Facet_double_map &facetMap)
 
 /**
  * @brief Permet de calculer un tableau de avec la classe de chaque face
- * 
- * @param facetMap 
- * @return Facet_int_map 
+ *
+ * @param facetMap
+ * @return Facet_int_map
  */
 Facet_int_map simpleThershold(Facet_double_map &facetMap)
 {
@@ -101,15 +100,16 @@ Facet_int_map simpleThershold(Facet_double_map &facetMap)
 	}
 	float intervalSize = (maxValue - minValue) / N_Class;
 
-
 	for (const auto &elem : facetMap)
 	{
 		int intervalIndex = (elem.second - minValue) / intervalSize;
 
-		if (intervalIndex < 0) {
+		if (intervalIndex < 0)
+		{
 			intervalIndex = 0;
 		}
-		if (intervalIndex >= N_Class) {
+		if (intervalIndex >= N_Class)
+		{
 			intervalIndex = N_Class - 1;
 		}
 
@@ -137,6 +137,9 @@ void writeOFFfromValueMap(const Polyhedron &mesh, const Facet_double_map &facetM
 	std::copy(mesh.points_begin(), mesh.points_end(),
 			  std::ostream_iterator<Kernel::Point_3>(in_myfile, "\n"));
 
+	color colorPalette[Nb_Color];
+	initColor(colorPalette);
+
 	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
 	{
 		Halfedge_facet_circulator j = i->facet_begin();
@@ -152,8 +155,8 @@ void writeOFFfromValueMap(const Polyhedron &mesh, const Facet_double_map &facetM
 
 		in_myfile << std::setprecision(5) << std::fixed; // set the format of floats to X.XXXXX
 
-		auto redValue = colorPalette[facetIntM.at(i)].R; // low values will be closer to red
-		auto greenValue = colorPalette[facetIntM.at(i)].V; 				   // high values will be closer to green
+		auto redValue = colorPalette[facetIntM.at(i)].R;   // low values will be closer to red
+		auto greenValue = colorPalette[facetIntM.at(i)].V; // high values will be closer to green
 		auto blueValue = colorPalette[facetIntM.at(i)].B;
 
 		in_myfile << " " << redValue << " " << greenValue << " " << blueValue;
@@ -168,9 +171,9 @@ void writeOFFfromValueMap(const Polyhedron &mesh, const Facet_double_map &facetM
 
 /**
  * @brief Cree un tableau avec les perimaitre de chaque face
- * 
- * @param mesh 
- * @return Facet_double_map 
+ *
+ * @param mesh
+ * @return Facet_double_map
  */
 Facet_double_map computePerimMap(const Polyhedron &mesh)
 {
@@ -194,14 +197,13 @@ Facet_double_map computePerimMap(const Polyhedron &mesh)
 }
 /**
  * @brief Cree un tableau avec les aires de chaque faces
- * 
- * @param mesh 
- * @return Facet_double_map 
+ *
+ * @param mesh
+ * @return Facet_double_map
  */
 Facet_double_map computeAreaMap(const Polyhedron &mesh)
 {
 	Facet_double_map out;
-	Facet_bool_map visit;
 
 	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
 	{
@@ -228,30 +230,77 @@ Facet_double_map computeAreaMap(const Polyhedron &mesh)
 }
 
 /**
- * @brief Permet de faire un changemetn de class en fonction des face adajcente
- * 
- * @param mesh 
- * @param segmentation 
- * @return Facet_int_map 
- * 
+ * @brief Fonction de parcour des voisin d'un face recursivement
+ *
+ * @param mesh
+ * @param facet
+ * @param visit
+ * @param segOut
+ * @param segmentation
+ * @param Nclass
  */
-Facet_int_map segmentationParCC(Polyhedron & mesh, Facet_int_map & segmentation, Facet )
+void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, Facet_int_map &segOut, Facet_int_map &segmentation, int Nclass)
 {
-	Facet_int_map NewSeg;
-	
-	for (Facet_iterator i = mesh.facets_begin(); i != mesh.facets_end(); ++i)
+	// Mark the facet as visited
+	visit[facet] = true;
+	segOut[facet] = Nclass;
+
+	// Traverse neighboring facets
+	for (int i = 0; i < 3; ++i)
 	{
-		Halfedge_facet_circulator j = i->facet_begin();
 
-		std::cout << segmentation.at(i) << std::endl;
+		Halfedge_facet_circulator he = facet->facet_begin();
+		Facet_iterator neighbor_facet = he->opposite()->facet();
 
+		// Check if neighbor_facet is in the same segmentation class and has not been visited yet
+		if (!visit[neighbor_facet] && segmentation[neighbor_facet] == segmentation[facet])
+		{
+			visit_facet(mesh, neighbor_facet, visit, segOut, segmentation, Nclass); // Recursively visit the neighboring facet
+		}
+
+		// Move to the next halfedge
+		he++;
+	}
+}
+/**
+ * @brief Permet de faire un changemetn de class en fonction des face adajcente
+ *
+ * @param mesh
+ * @param segmentation
+ * @return Facet_int_map
+ *
+ */
+Facet_int_map segmentationParCC(Polyhedron &mesh, Facet_int_map &segmentation)
+{
+	Facet_int_map NewSeg = segmentation;
+	Facet_bool_map visit;
+
+	int nClass = 0;
+
+	//  tableau de visit
+	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
+	{
+		visit[f] = false;
 	}
 
+	// parcour du mesh
+	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
+	{
+		if (!visit[f])
+		{
+			nClass++;
+			visit_facet(mesh, f, visit, NewSeg, segmentation, nClass);
+		}
+	}
+
+	Nb_Color = nClass;
 	return NewSeg;
 }
 
+// ---------------------------------------------------
 int main(int argc, char *argv[])
 {
+
 	if (argc < 2)
 	{
 		std::cerr << "Il manque un paramètre au programme. Veuillez lui donner en entrée un nom de fichier au format off." << std::endl;
@@ -267,15 +316,17 @@ int main(int argc, char *argv[])
 		std::cerr << "Le fichier donné n'est pas un fichier off valide." << std::endl;
 		return 1;
 	}
-
-	auto mapPerim = computePerimMap(mesh);
+	srand(time(NULL));
+	auto mapPerim = computeAreaMap(mesh);
 
 	normalizeMap(mapPerim);
 
 	auto PerimInt = simpleThershold(mapPerim);
-	auto Em = segmentationParCC(mesh,PerimInt);	
-
+	std::cout << Nb_Color << std::endl;
 	writeOFFfromValueMap(mesh, mapPerim, PerimInt, argc >= 3 ? argv[2] : "result.off");
+	auto Em = segmentationParCC(mesh, PerimInt);
+	std::cout << Nb_Color << std::endl;
+	writeOFFfromValueMap(mesh, mapPerim, Em, argc >= 3 ? argv[2] : "resultCC.off");
 
 	return 0;
 }
