@@ -367,6 +367,7 @@ int main(int argc, char *argv[])
 	auto PerimInt = simpleThershold(mapPerim);
 	std::cout << Nb_Color << std::endl;
 	writeOFFfromValueMap(mesh, mapPerim, PerimInt, argc >= 3 ? argv[2] : "result.off");
+
 	auto Em = segmentationParCC(mesh, PerimInt);
 	std::cout << Nb_Color << std::endl;
 	writeOFFfromValueMap(mesh, mapPerim, Em, argc >= 3 ? argv[2] : "resultCC.off");
@@ -374,6 +375,17 @@ int main(int argc, char *argv[])
 	auto cpS = complexSegmentation(mesh, mapPerim);
 	std::cout << Nb_Color << std::endl;
 	writeOFFfromValueMap(mesh, mapPerim, cpS, argc >= 3 ? argv[2] : "resultcompl.off");
+
+	std::ofstream file;
+	file.open("test.txt");
+	file << "simple, CC, complex" << std::endl;
+	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
+	{
+		file << PerimInt[f] << "," << Em[f] << "," << cpS[f] << std::endl;
+	}
+	file.close();
+
+
 
 	return 0;
 }
