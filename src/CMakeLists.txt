@@ -39,8 +39,5 @@ endif()
 
 create_single_source_cgal_program( "color.cpp" )
 
-create_single_source_cgal_program( "genre.cpp" )
-
-create_single_source_cgal_program( "measures.cpp" )
 
 

@@ -6,7 +6,7 @@
 #include <fstream>
 #include <time.h>
 
-#define N_Class 6
+
 
 typedef struct s_color
 {
@@ -29,7 +29,8 @@ typedef std::map<Polyhedron::Facet_const_handle, int> Facet_int_map;
 typedef std::map<Polyhedron::Facet_const_handle, bool> Facet_bool_map;
 
 // variable global
-int Nb_Color = N_Class;
+int N_Class;
+int Nb_Color;
 
 void initColor(color *colorPalette)
 {
@@ -80,7 +81,7 @@ void normalizeMap(Facet_double_map &facetMap)
  * @param facetMap
  * @return Facet_int_map
  */
-Facet_int_map simpleThershold(Facet_double_map &facetMap)
+Facet_int_map simpleSegmentation(Facet_double_map &facetMap)
 {
 	double avgValue = 0;
 	int nb = 0, em = 0;
@@ -109,6 +110,7 @@ Facet_int_map simpleThershold(Facet_double_map &facetMap)
 
 		ClassInt[elem.first] = intervalIndex;
 	}
+	Nb_Color = N_Class;
 	return ClassInt;
 }
 
@@ -233,27 +235,30 @@ Facet_double_map computeAreaMap(const Polyhedron &mesh)
  * @param segmentation
  * @param Nclass
  */
-void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, Facet_int_map &segOut, Facet_int_map &segmentation, int Nclass)
+void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visitMap, Facet_int_map &segOut, Facet_int_map &segIni, int Nclass)
 {
 	// Mark the facet as visited
-	visit[facet] = true;
+	visitMap[facet] = true;
 	segOut[facet] = Nclass;
 
 	Halfedge_facet_circulator he = facet->facet_begin();
 
 	do
 	{
-		Facet_iterator neighbor_facet = he->opposite()->facet();
+		Facet_iterator face_voisin = he->opposite()->facet();
 
-		if (!visit[neighbor_facet] && segmentation[neighbor_facet] == segmentation[facet])
+		if (face_voisin != NULL)
 		{
-			visit_facet(mesh, neighbor_facet, visit, segOut, segmentation, Nclass); // Recursively visit the neighboring facet
+			if (!visitMap[face_voisin] && segIni[face_voisin] == segIni[facet])
+			{
+				visit_facet(mesh, face_voisin, visitMap, segOut, segIni, Nclass);
+			}
 		}
 
 	} while (++he != facet->facet_begin());
 }
 /**
- * @brief Permet de faire un changemetn de class en fonction des face adajcente
+ * @brief Permet de faire un changement de class en fonction des face adajcente
  *
  * @param mesh
  * @param segmentation
@@ -262,30 +267,29 @@ void visit_facet(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, 
  */
 Facet_int_map segmentationParCC(Polyhedron &mesh, Facet_int_map &segmentation)
 {
-	Facet_int_map NewSeg = segmentation;
-	Facet_bool_map visit;
+	Facet_int_map segOut = segmentation;
+	Facet_bool_map is_visit;
 
 	int nClass = 0;
 
-	
 	//  tableau de visit
 	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
 	{
-		visit[f] = false;
+		is_visit[f] = false;
 	}
 
 	// parcour du mesh
 	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
 	{
-		if (!visit[f])
+		if (!is_visit[f])
 		{
-			visit_facet(mesh, f, visit, NewSeg, segmentation, nClass);
+			visit_facet(mesh, f, is_visit, segOut, segmentation, nClass);
 			nClass++;
 		}
 	}
 
 	Nb_Color = nClass;
-	return NewSeg;
+	return segOut;
 }
 
 void RecVisit(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, Facet_int_map &seg, Facet_double_map &data, int nbClass, float seuil)
@@ -300,9 +304,12 @@ void RecVisit(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, Fac
 		Facet_iterator neighbor_facet = he->opposite()->facet();
 
 		// Check if neighbor_facet is in the same segmentation class and has not been visited yet
-		if (!visit[neighbor_facet] && (fabs(data[neighbor_facet] - data[facet]) <= seuil))
+		if (neighbor_facet != NULL)
 		{
-			RecVisit(mesh, neighbor_facet, visit, seg, data, nbClass, seuil);
+			if (!visit[neighbor_facet] && (fabs(data[neighbor_facet] - data[facet]) <= seuil))
+			{
+				RecVisit(mesh, neighbor_facet, visit, seg, data, nbClass, seuil);
+			}
 		}
 
 	} while (++he != facet->facet_begin());
@@ -311,7 +318,7 @@ void RecVisit(Polyhedron &mesh, Facet_iterator facet, Facet_bool_map &visit, Fac
 Facet_int_map complexSegmentation(Polyhedron &mesh, Facet_double_map &facetMap)
 {
 	Facet_int_map clxSeg;
-	Facet_bool_map visit;
+	Facet_bool_map is_visit;
 	int nClass = 0;
 
 	double maxValue = facetMap.begin()->second;
@@ -319,19 +326,19 @@ Facet_int_map complexSegmentation(Polyhedron &mesh, Facet_double_map &facetMap)
 
 	computBorne(facetMap, minValue, maxValue);
 
-	float intervalSize = (maxValue - minValue) / N_Class;
+	float seuil = (maxValue - minValue) / N_Class;
 
 	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
 	{
-		visit[f] = false;
+		is_visit[f] = false;
 		clxSeg[f] = 0;
 	}
 
 	for (Facet_iterator f = mesh.facets_begin(); f != mesh.facets_end(); ++f)
 	{
-		if (!visit[f])
+		if (!is_visit[f])
 		{
-			RecVisit(mesh, f, visit, clxSeg, facetMap, nClass, intervalSize);
+			RecVisit(mesh, f, is_visit, clxSeg, facetMap, nClass, seuil);
 			nClass++;
 		}
 	}
@@ -350,6 +357,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	auto mode = (argc >= 3 ? argv[2] : "A");
+	N_Class = (argc >= 4 ? atoi(argv[3]) : 5);
+
 	Polyhedron mesh;
 
 	std::ifstream input(argv[1]);
@@ -361,20 +371,31 @@ int main(int argc, char *argv[])
 	}
 	srand(time(NULL));
 
-	auto mapPerim = computeAreaMap(mesh);
+	Facet_double_map mapPerim;
+
+	if (strcmp(mode, "P") == 0)
+	{
+		mapPerim = computePerimMap(mesh);
+	}
+	else
+	{
+		mapPerim = computeAreaMap(mesh);
+	}
+
 	normalizeMap(mapPerim);
 
-	auto PerimInt = simpleThershold(mapPerim);
-	std::cout << Nb_Color << std::endl;
-	writeOFFfromValueMap(mesh, mapPerim, PerimInt, argc >= 3 ? argv[2] : "result.off");
+	auto PerimInt = simpleSegmentation(mapPerim);
+	std::cout << "Nb Class avec segmentation simple : " << Nb_Color << std::endl;
+	writeOFFfromValueMap(mesh, mapPerim, PerimInt, "result.off");
 
 	auto Em = segmentationParCC(mesh, PerimInt);
-	std::cout << Nb_Color << std::endl;
-	writeOFFfromValueMap(mesh, mapPerim, Em, argc >= 3 ? argv[2] : "resultCC.off");
+	std::cout << "Nb Class avec segmentation CC : " << Nb_Color << std::endl;
+	writeOFFfromValueMap(mesh, mapPerim, Em, "resultCC.off");
 
 	auto cpS = complexSegmentation(mesh, mapPerim);
-	std::cout << Nb_Color << std::endl;
-	writeOFFfromValueMap(mesh, mapPerim, cpS, argc >= 3 ? argv[2] : "resultcompl.off");
+	std::cout << "Nb Class avec segmentation complex : " << Nb_Color << std::endl;
+	writeOFFfromValueMap(mesh, mapPerim, cpS, "resultcompl.off");
+
 
 	std::ofstream file;
 	file.open("test.txt");
@@ -384,8 +405,6 @@ int main(int argc, char *argv[])
 		file << PerimInt[f] << "," << Em[f] << "," << cpS[f] << std::endl;
 	}
 	file.close();
-
-
 
 	return 0;
 }
