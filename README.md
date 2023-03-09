@@ -6,7 +6,7 @@ Pour compiler le programme, il faut se rendre dans le répertoire `build` et ex�
 
 ## Utilisation
 
-Le programme implémente la segmentation d'un fichier .OFF. Pour tester le programme avec un fichier d'entrée `.off`, on peut utiliser la commande suivante à partir du répertoire `buil` :
+Le programme implémente la segmentation d'un fichier .OFF. Pour tester le programme avec un fichier d'entrée `.off`, on peut utiliser la commande suivante à partir du répertoire `build` :
 
 ```
 ./color ../data/cube.off
